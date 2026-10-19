@@ -5,42 +5,108 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Banking Voice Agent — Console</title>
 <style>
-  :root { --bg:#0b1220; --card:#141c2f; --accent:#4f8cff; --muted:#8a93a6; --ok:#3dd68c; }
+  :root { --bg:#070b14; --card:#0f1626; --card2:#131c30; --accent:#5b8cff; --accent2:#7c5cff; --muted:#7f8aa3; --ok:#3dd68c; --warn:#ffb020; --danger:#ff5d6c; --border:#1c2540; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:#e8ecf4; }
-  header { padding:20px 28px; border-bottom:1px solid #1f2940; display:flex; align-items:center; gap:12px; }
-  header h1 { font-size:18px; margin:0; }
-  header .dot { width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok); }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; padding:24px 28px; }
-  .card { background:var(--card); border:1px solid #1f2940; border-radius:12px; padding:18px; }
-  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 12px; }
-  .stat { font-size:30px; font-weight:700; }
+  html,body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:#e8ecf4; }
+  body { background: radial-gradient(1200px 600px at 10% -10%, #1a2a55 0%, transparent 60%), var(--bg); min-height:100vh; }
+  header { padding:18px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; backdrop-filter:blur(8px); position:sticky; top:0; background:rgba(7,11,20,.7); z-index:10; }
+  header .brand { display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:17px; margin:0; font-weight:600; }
+  header .dot { width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  .tabs { display:flex; gap:6px; }
+  .tabs button { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .wrap { padding:24px 28px; max-width:1400px; margin:0 auto; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .card { background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
+  .card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin:0 0 10px; display:flex; justify-content:space-between; align-items:center; }
+  .stat { font-size:34px; font-weight:700; background:linear-gradient(90deg,#fff,#9bb4ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .sub { color:var(--muted); font-size:13px; margin-top:4px; }
-  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #1f2940; font-size:14px; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:14px; }
   .row:last-child { border-bottom:none; }
-  .badge { padding:2px 8px; border-radius:999px; font-size:11px; background:#1f2940; }
-  .badge.ok { background:#1a3a2a; color:var(--ok); }
-  .log { font-family:ui-monospace,monospace; font-size:12px; line-height:1.6; max-height:260px; overflow:auto; }
-  .log span { color:var(--muted); }
+  .badge { padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.ok { background:#13301f; color:var(--ok); }
+  .badge.warn { background:#33260a; color:var(--warn); }
+  .badge.danger { background:#33131a; color:var(--danger); }
+  .log { font-family:ui-monospace,monospace; font-size:12px; line-height:1.7; max-height:320px; overflow:auto; }
+  .log div { padding:4px 0; border-bottom:1px solid #16203a; }
+  .log span { color:var(--muted); margin-right:8px; }
+  .bar { height:8px; border-radius:4px; background:#1a2440; overflow:hidden; margin-top:8px; }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:4px; }
+  .chart { display:flex; align-items:flex-end; gap:6px; height:120px; padding-top:10px; }
+  .chart .b { flex:1; background:linear-gradient(180deg,var(--accent),var(--accent2)); border-radius:4px 4px 0 0; min-width:8px; transition:height .4s; }
+  .chart .b:hover { filter:brightness(1.3); }
+  .call { background:#0b1324; border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .call .meta { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .call .transcript { font-size:14px; }
+  .call .transcript b { color:var(--accent); }
+  @media (max-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:600px){ .grid{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
-<header><div class="dot"></div><h1>Banking Voice Agent — Live Console</h1></header>
-<div class="grid">
-  <div class="card"><h2>Status</h2><div class="stat">Online</div><div class="sub">LiveKit SIP trunk connected</div></div>
-  <div class="card"><h2>Active Calls</h2><div class="stat">0</div><div class="sub">0 queued</div></div>
-  <div class="card"><h2>Avg Latency</h2><div class="stat">612ms</div><div class="sub">end-to-end</div></div>
-  <div class="card"><h2>Agents</h2>
-    <div class="row"><span>Supervisor</span><span class="badge ok">ready</span></div>
-    <div class="row"><span>Accounts</span><span class="badge ok">ready</span></div>
-    <div class="row"><span>Policy RAG</span><span class="badge ok">ready</span></div>
-    <div class="row"><span>Disputes</span><span class="badge ok">ready</span></div>
+<header>
+  <div class="brand"><div class="dot"></div><h1>Banking Voice Agent — Live Console</h1></div>
+  <div class="tabs">
+    <button class="active">Overview</button>
+    <button>Calls</button>
+    <button>Agents</button>
+    <button>Logs</button>
   </div>
-  <div class="card" style="grid-column:span 2;"><h2>Event Log</h2><div class="log">
-    <div><span>10:42:01</span> Worker started (dev mode)</div>
-    <div><span>10:42:03</span> Connected to LiveKit cloud</div>
-    <div><span>10:42:05</span> Postgres checkpoint store ready</div>
-  </div></div>
+</header>
+<div class="wrap">
+  <div class="grid">
+    <div class="card"><h2>Status</h2><div class="stat">Online</div><div class="sub">LiveKit SIP trunk connected</div><div class="bar"><i style="width:100%"></i></div></div>
+    <div class="card"><h2>Active Calls</h2><div class="stat">3</div><div class="sub">1 queued · 2 in agent</div></div>
+    <div class="card"><h2>Avg Latency</h2><div class="stat">598ms</div><div class="sub">end-to-end (p95 742ms)</div></div>
+    <div class="card"><h2>Resolved Today</h2><div class="stat">127</div><div class="sub">94% first-call resolution</div></div>
+
+    <div class="card"><h2>Agent Health</h2>
+      <div class="row"><span>Supervisor</span><span class="badge ok">ready</span></div>
+      <div class="row"><span>Accounts</span><span class="badge ok">ready</span></div>
+      <div class="row"><span>Policy RAG</span><span class="badge ok">ready</span></div>
+      <div class="row"><span>Disputes</span><span class="badge warn">busy</span></div>
+    </div>
+
+    <div class="card"><h2>Latency Breakdown (ms)</h2>
+      <div class="row"><span>VAD</span><span>48</span></div>
+      <div class="row"><span>STT</span><span>231</span></div>
+      <div class="row"><span>LLM</span><span>186</span></div>
+      <div class="row"><span>TTS</span><span>133</span></div>
+      <div class="bar"><i style="width:75%"></i></div>
+    </div>
+
+    <div class="card" style="grid-column:span 2;"><h2>Call Volume (last 12h)</h2>
+      <div class="chart">
+        <div class="b" style="height:40%"></div><div class="b" style="height:55%"></div><div class="b" style="height:70%"></div>
+        <div class="b" style="height:60%"></div><div class="b" style="height:85%"></div><div class="b" style="height:95%"></div>
+        <div class="b" style="height:78%"></div><div class="b" style="height:65%"></div><div class="b" style="height:50%"></div>
+        <div class="b" style="height:72%"></div><div class="b" style="height:88%"></div><div class="b" style="height:62%"></div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column:span 2;"><h2>Recent Calls</h2>
+      <div class="call"><div class="meta"><span>+1 (415) xxx-1024</span><span>Accounts · 2m 14s</span></div><div class="transcript"><b>Agent:</b> Your checking balance is twelve hundred dollars and fifty cents.</div></div>
+      <div class="call"><div class="meta"><span>+1 (212) xxx-8841</span><span>Policy RAG · 1m 42s</span></div><div class="transcript"><b>Caller:</b> What's the wire cutoff time? <b>Agent:</b> Wires must be submitted by 4 PM ET.</div></div>
+      <div class="call"><div class="meta"><span>+1 (310) xxx-5509</span><span>Disputes · 4m 02s</span></div><div class="transcript"><b>Agent:</b> I've locked your card and escalated to fraud team.</div></div>
+    </div>
+
+    <div class="card" style="grid-column:span 2;"><h2>Event Log</h2><div class="log">
+      <div><span>10:42:01</span> Worker started (dev mode)</div>
+      <div><span>10:42:03</span> Connected to LiveKit cloud</div>
+      <div><span>10:42:05</span> Postgres checkpoint store ready</div>
+      <div><span>10:43:12</span> Inbound SIP call routed → Accounts</div>
+      <div><span>10:44:01</span> pgvector retrieval 38ms (top-3)</div>
+      <div><span>10:45:30</span> Dispute escalated to HITL queue</div>
+    </div></div>
+  </div>
 </div>
+<script>
+  document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',e=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+    e.target.classList.add('active');
+  }));
+</script>
 </body>
 </html>
