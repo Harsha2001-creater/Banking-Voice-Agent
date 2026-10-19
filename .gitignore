@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.local
+venv/
+env/
+ENV/
+
+# Telemetry, Logs & Audio Dumps
+*.log
+recordings/
+*.wav
+*.mp3
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+
+# Checkpoints / DB data
+*.sqlite
+*.sqlite3

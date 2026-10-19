@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Banking Voice Agent — Console</title>
+<style>
+  :root { --bg:#0b1220; --card:#141c2f; --accent:#4f8cff; --muted:#8a93a6; --ok:#3dd68c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:#e8ecf4; }
+  header { padding:20px 28px; border-bottom:1px solid #1f2940; display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:18px; margin:0; }
+  header .dot { width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; padding:24px 28px; }
+  .card { background:var(--card); border:1px solid #1f2940; border-radius:12px; padding:18px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 12px; }
+  .stat { font-size:30px; font-weight:700; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #1f2940; font-size:14px; }
+  .row:last-child { border-bottom:none; }
+  .badge { padding:2px 8px; border-radius:999px; font-size:11px; background:#1f2940; }
+  .badge.ok { background:#1a3a2a; color:var(--ok); }
+  .log { font-family:ui-monospace,monospace; font-size:12px; line-height:1.6; max-height:260px; overflow:auto; }
+  .log span { color:var(--muted); }
+</style>
+</head>
+<body>
+<header><div class="dot"></div><h1>Banking Voice Agent — Live Console</h1></header>
+<div class="grid">
+  <div class="card"><h2>Status</h2><div class="stat">Online</div><div class="sub">LiveKit SIP trunk connected</div></div>
+  <div class="card"><h2>Active Calls</h2><div class="stat">0</div><div class="sub">0 queued</div></div>
+  <div class="card"><h2>Avg Latency</h2><div class="stat">612ms</div><div class="sub">end-to-end</div></div>
+  <div class="card"><h2>Agents</h2>
+    <div class="row"><span>Supervisor</span><span class="badge ok">ready</span></div>
+    <div class="row"><span>Accounts</span><span class="badge ok">ready</span></div>
+    <div class="row"><span>Policy RAG</span><span class="badge ok">ready</span></div>
+    <div class="row"><span>Disputes</span><span class="badge ok">ready</span></div>
+  </div>
+  <div class="card" style="grid-column:span 2;"><h2>Event Log</h2><div class="log">
+    <div><span>10:42:01</span> Worker started (dev mode)</div>
+    <div><span>10:42:03</span> Connected to LiveKit cloud</div>
+    <div><span>10:42:05</span> Postgres checkpoint store ready</div>
+  </div></div>
+</div>
+</body>
+</html>
