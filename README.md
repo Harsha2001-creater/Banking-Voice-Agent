@@ -1,121 +1,187 @@
-# Autonomous Voice Banking Agent (Multi-Agent RAG)
+<div align="center">
 
-A low-latency, full-duplex conversational voice agent engineered for banking customer support. The system bridges PSTN phone calls through LiveKit SIP trunks, processes audio using Silero VAD and Deepgram Nova-3, and routes caller intents through a LangGraph multi-agent supervisor backed by PostgreSQL (`pgvector` for policy retrieval and `PostgresSaver` for call persistence).
+# 🎙️ Autonomous Voice Banking Agent
+### **Full-Duplex Multi-Agent RAG for Real-Time Telephony Support**
+
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![LiveKit Agents](https://img.shields.io/badge/LiveKit-SIP%20%26%20WebRTC-00E5FF?style=for-the-badge&logo=webrtc&logoColor=black)](https://docs.livekit.io/agents/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
+[![Deepgram](https://img.shields.io/badge/Deepgram-Nova--3%20%26%20Aura-13EF93?style=for-the-badge&logo=deepgram&logoColor=black)](https://deepgram.com/)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-LLM%20Gateway-6366F1?style=for-the-badge)](https://openrouter.ai/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+
+<p align="center">
+  <em>A production-grade, sub-800ms latency conversational voice system bridging PSTN phone calls via LiveKit SIP trunks to a stateful LangGraph multi-agent supervisor backed by AWS RDS PostgreSQL and pgvector.</em>
+</p>
+
+[Architecture](#-system-architecture) •
+[Key Features](#-key-features) •
+[Tech Stack](#-tech-stack--latency-budget) •
+[Quick Start](#-quick-start) •
+[Deployment](#-running-the-agent)
+
+</div>
 
 ---
 
-## Architecture Overview
+## 🏗️ System Architecture
 
+GitHub natively renders the Mermaid diagram below into a visual flow showing the real-time audio and token streaming pipeline:
+
+```mermaid
+flowchart TD
+    Caller(["📞 Inbound PSTN / WebRTC Caller"]) <-->|"Duplex Audio (SIP / RTP)"| Gateway["🌐 LiveKit SIP Gateway"]
+    
+    subgraph VoiceWorker ["⚡ LiveKit Voice Worker (Python)"]
+        VAD["Silero VAD<br/>(<50ms Barge-in Detection)"]
+        STT["Deepgram Nova-3 STT<br/>(<250ms Streaming Transcription)"]
+        TTS["Deepgram Aura / Cartesia TTS<br/>(<200ms First-Byte Audio)"]
+    end
+
+    Gateway <-->|"Bi-directional WebSocket"| VoiceWorker
+    VAD --> STT
+    STT -->|"Streamed User Transcript"| Supervisor
+
+    subgraph LangGraph ["🧠 LangGraph Multi-Agent Orchestrator"]
+        Supervisor{"🧭 Supervisor Router<br/>(Intent Classification)"}
+        
+        Accounts["🏦 Accounts Specialist<br/>Balance & Ledger Queries"]
+        PolicyRAG["📜 Policy RAG Specialist<br/>Regulatory & Fee Q&A"]
+        Disputes["🛡️ Dispute & Fraud Agent<br/>Card Locks & HITL Escalation"]
+
+        Supervisor -->|"Balance / Transfers"| Accounts
+        Supervisor -->|"Compliance / Fees"| PolicyRAG
+        Supervisor -->|"Fraud / Unrecognized Tx"| Disputes
+    end
+
+    subgraph DataLayer ["🗄️ AWS RDS PostgreSQL"]
+        Checkpoint[("💾 PostgresSaver<br/>Call Session State")]
+        Ledger[("📊 Customer Accounts<br/>& Transactions")]
+        VectorDB[("🔍 pgvector Index<br/>Regulatory PDF Manuals")]
+    end
+
+    Supervisor <--> Checkpoint
+    Accounts <--> Ledger
+    PolicyRAG <-->|"384-d Cosine Search"| VectorDB
+    Disputes <--> Ledger
+
+    Accounts & PolicyRAG & Disputes -->|"Streaming Tokens via OpenRouter"| TTS
+    TTS -->|"Synthesized Audio Chunks"| Gateway
 ```
-                  [Inbound PSTN Phone Call]
-                             │
-                             ▼
-                [LiveKit SIP Telephony Gateway]
-                             │ (Bi-directional WebSockets)
-                             ▼
-                 [LiveKit Voice Worker]
-                 ├── VAD: Silero (<50ms detection)
-                 ├── STT: Deepgram Nova-3 (<250ms)
-                 └── TTS: Deepgram Aura / Cartesia Sonic (<200ms)
-                             │
-             (Streamed Transcripts & User Tokens)
-                             ▼
-             [LangGraph Multi-Agent Supervisor]
-                             │
-   ┌─────────────────────────┼─────────────────────────┐
-   ▼                         ▼                         ▼
-[Accounts Agent]        [Policy RAG Agent]         [Dispute Agent]
-├── Balance lookups     ├── pgvector Cosine Search ├── Fraud lock flags
-└── Ledger summaries    └── Regulatory PDF chunks  └── HITL escalations
-│                         │                         │
-└─────────────────────────┴─────────────────────────┘
-│
-(Streaming LLM Tokens via OpenRouter)
-▼
-[LiveKit TTS Streamer]
-│ (Synthesized Audio Chunks)
-▼
-[Caller Earpiece]
+
+---
+
+## ✨ Key Features
+
+| Capability | Technical Implementation |
+| :--- | :--- |
+| ⚡ **Sub-800ms Turnaround** | Pipes streaming LLM tokens from OpenRouter directly into real-time TTS chunk buffers without waiting for full sentence completion. |
+| 🛑 **Natural Barge-In (VAD)** | Silero VAD continuously monitors incoming caller audio (<50ms window) and immediately flushes queued TTS audio when interrupted. |
+| 📚 **Agentic Compliance RAG** | Queries `pgvector` HNSW indexes over chunked regulatory PDFs (200–350 tokens) to answer complex fee, wire, and policy inquiries. |
+| 🔄 **Stateful Call Checkpointing** | Persists multi-turn conversation threads via `AsyncPostgresSaver`, enabling seamless context handoffs across specialist sub-agents. |
+| 🗣️ **Phonetic Normalization** | Enforces strict spoken-word formatting (e.g., rendering `$1,240.50` as *"twelve hundred forty dollars and fifty cents"*) for natural prosody. |
+| 🔒 **HITL Fraud Safeguards** | Isolates card-locking and dispute workflows behind human-in-the-loop verification flags and PII regex redaction. |
+
+---
+
+## 🛠️ Tech Stack & Latency Budget
+
+| Layer | Technology | Model / Engine | Target Latency |
+| :--- | :--- | :--- | :--- |
+| **Telephony & RTC** | LiveKit Cloud & SIP | WebRTC / SIP Trunking | `~40ms` |
+| **Voice Activity (VAD)** | Silero | `silero-vad` v5 | `<50ms` |
+| **Speech-to-Text (STT)** | Deepgram | `nova-3` (Streaming WebSocket) | `180–250ms` |
+| **Agent Orchestration** | LangGraph | `StateGraph` + `AsyncPostgresSaver` | `~15ms` |
+| **LLM Brain** | OpenRouter | `meta-llama/llama-3.3-70b-instruct` | `150–250ms TTFT` |
+| **Vector Embeddings** | HuggingFace | `all-MiniLM-L6-v2` (384 dims) | `~20ms` |
+| **Text-to-Speech (TTS)** | Deepgram / Cartesia | `aura-asteria-en` / `sonic-english` | `150–200ms` |
+
+---
+
+## 📂 Project Structure
+
+```text
+banking-voice-agent/
+├── .env.example                  # Template for environment credentials
+├── .gitignore                    # Git exclusion rules
+├── README.md                     # Project documentation
+├── requirements.txt              # Python dependencies
+├── src/
+│   ├── config.py                 # Runtime constants & validated env settings
+│   ├── voice/
+│   │   ├── worker.py             # LiveKit entrypoint & SIP audio session loop
+│   │   ├── adapter.py            # LangGraph-to-LiveKit streaming token bridge
+│   │   └── prompts.py            # Phonetic & voice-concise system prompts
+│   ├── agent/
+│   │   ├── state.py              # BankingVoiceState TypedDict schema
+│   │   ├── graph.py              # Compiled StateGraph & Postgres checkpointer
+│   │   ├── nodes/                # Supervisor, Accounts, Policy RAG, Disputes
+│   │   └── tools/                # RDS SQL queries & pgvector similarity search
+│   ├── rag/
+│   │   ├── ingest.py             # PDF regulatory manual chunker & vector upsert
+│   │   └── embeddings.py         # Local HuggingFace embedding pipeline
+│   └── db/
+│       ├── session.py            # Async psycopg connection pool
+│       └── schema.sql            # PostgreSQL + pgvector DDL schema
+└── tests/                        # Routing & retrieval latency unit tests
 ```
 
 ---
 
-## Core Capabilities
+## 🚀 Quick Start
 
-- **Sub-800ms End-to-End Latency:** Employs streaming LLM token delivery via OpenRouter directly into real-time TTS audio buffers.
-- **Dynamic Turn-Taking & Interruption:** Silero VAD detects user speech during agent output and triggers immediate cancellation of pending TTS audio streams.
-- **Agentic Policy RAG:** Retrieves banking compliance guidelines, wire transfer cutoff times, and overdraft fee schedules indexed via pgvector from regulatory manuals.
-- **Stateful Call Resumption:** Checkpointed call sessions allow transfer across specialized sub-agents without context loss.
-- **Voice-Tuned Output:** Enforces strict phonetic normalization (e.g., "$1,200.50" rendered as "twelve hundred dollars and fifty cents") and restricts responses to under two sentences.
+### 1. Prerequisites
+* **Python 3.10+** installed locally
+* **PostgreSQL 15+** (AWS RDS or local) with the `vector` extension enabled
+* **LiveKit Cloud** project with an inbound SIP phone number configured
+* API keys for **OpenRouter**, **Deepgram**, and **LiveKit**
 
----
+### 2. Installation
 
-## Tech Stack
+```bash
+# Clone the repository
+git clone [https://github.com/](https://github.com/)<your-username>/banking-voice-agent.git
+cd banking-voice-agent
 
-- **Orchestration & Voice Runtime:** LiveKit Agents SDK (Python)
-- **Agent Framework:** LangGraph, LangChain Core
-- **Speech Infrastructure:** Deepgram Nova-3 (STT), Deepgram Aura / Cartesia (TTS), Silero (VAD)
-- **Model Gateway:** OpenRouter (`meta-llama/llama-3.3-70b-instruct` / `google/gemini-2.5-flash`)
-- **Database & Retrieval:** AWS RDS PostgreSQL, `pgvector` extension, `psycopg`
-- **Embeddings:** HuggingFace `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
----
+# Install dependencies
+pip install -r requirements.txt
+```
 
-## Prerequisites
+### 3. Environment Configuration
 
-- Python 3.10+
-- PostgreSQL instance (v15+) with `vector` extension enabled
-- LiveKit Cloud account with an assigned SIP phone number
-- API keys: OpenRouter, Deepgram, and LiveKit
+Copy the example configuration file and populate your credentials:
 
----
+```bash
+cp .env.example .env
+```
 
-## Installation & Environment Setup
+```ini
+# --- LiveKit Telephony & RTC ---
+LIVEKIT_URL=wss://<project-name>.livekit.cloud
+LIVEKIT_API_KEY=APIxxxxxxxxx
+LIVEKIT_API_SECRET=secretxxxxxxxxx
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/<your-username>/banking-voice-agent.git
-   cd banking-voice-agent
-   ```
+# --- Speech & LLM Gateway ---
+DEEPGRAM_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxx
 
-2. **Create a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+# --- AWS RDS PostgreSQL & pgvector ---
+DATABASE_URL=postgresql://postgres:password@<rds-endpoint>:5432/bank_agent
+```
 
-3. **Configure Environment Variables:**
-   Copy `.env.example` to `.env` and populate all credentials:
-   ```bash
-   cp .env.example .env
-   ```
+### 4. Database & Vector Index Initialization
 
-   ```env
-   # LiveKit Telephony & RTC
-   LIVEKIT_URL=wss://<project-name>.livekit.cloud
-   LIVEKIT_API_KEY=APIxxxxxxxxx
-   LIVEKIT_API_SECRET=secretxxxxxxxxx
-
-   # STT / TTS / LLM
-   DEEPGRAM_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxx
-
-   # PostgreSQL & Vector Database
-   DATABASE_URL=postgresql://postgres:password@<rds-endpoint>:5432/bank_agent
-   ```
-
----
-
-## Database & Vector Initialization
-
-Run the initialization DDL script to create the vector extension, policy chunk table, and account ledgers:
+Initialize the relational tables, `pgvector` extension, and HNSW cosine similarity index:
 
 ```bash
 psql $DATABASE_URL -f src/db/schema.sql
 ```
 
-Index your regulatory manuals and compliance documentation into vector storage:
+Chunk and embed your regulatory PDF manuals into PostgreSQL:
 
 ```bash
 python -m src.rag.ingest --source-dir ./documents/regulatory_manuals
@@ -123,24 +189,40 @@ python -m src.rag.ingest --source-dir ./documents/regulatory_manuals
 
 ---
 
-## Running the Agent
+## 🎧 Running the Agent
 
-### Local Development (Web Sandbox)
+> [!TIP]
+> **Zero-Cost Browser Testing:** Start with **Web Sandbox Mode** to test voice latency, barge-in interruptions, and multi-agent routing using your computer microphone before dialing via carrier telephony.
 
-Test speech processing, interruptions, and agent state transitions in your browser via WebRTC:
+### Mode A: Local WebRTC Sandbox (Development)
 
 ```bash
 python -m src.voice.worker dev
 ```
+Open the LiveKit Agent Playground URL output in your terminal to converse with the banking supervisor directly in your browser.
 
-Open the LiveKit Agent Sandbox URL printed in your terminal and speak through your local microphone.
-
-### Production Telephony Mode (Inbound SIP)
-
-Run the worker in worker daemon mode:
+### Mode B: Production Inbound SIP Telephony
 
 ```bash
 python -m src.voice.worker start
 ```
+1. Navigate to your **LiveKit Cloud Console → Telephony → Dispatch Rules**.
+2. Point your inbound US/International SIP number to the worker queue (`banking-voice-agent`).
+3. Call the provisioned telephone number from any mobile or landline phone.
 
-Point an Inbound SIP Dispatch Rule in the LiveKit Console to this dispatch agent queue name (`banking-voice-agent`). Dial your assigned telephone number to engage the bot.
+---
+
+## 🗺️ Roadmap
+
+- [x] Multi-agent supervisor routing (Accounts, Policy RAG, Disputes)
+- [x] AWS RDS `pgvector` integration for regulatory compliance manuals
+- [x] Full-duplex interruption handling with Silero VAD
+- [ ] Biometric voiceprint caller verification
+- [ ] Warm call transfer (`SIP REFER`) to human banking specialists with live summary whisper
+- [ ] Real-time Streamlit supervisor observability dashboard
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ using LiveKit, LangGraph, OpenRouter, and PostgreSQL</sub>
+</div>
